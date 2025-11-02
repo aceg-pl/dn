@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Morning Brief – Osielsko, PL</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{
+    --bg:#0f1115;--card:#151923;--fg:#e9eef7;--muted:#9aa4b2;--accent:#67d2ff;--ok:#2bd576;--warn:#ffcc00;--bad:#ff6b6b;--link:#7cd3ff;
+    --radius:14px;--shadow:0 10px 30px rgba(0,0,0,.25)
+  }
+  html,body{background:var(--bg);color:var(--fg);margin:0;font:16px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+  a{color:var(--link);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1200px;margin:0 auto;padding:18px}
+  header{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline;margin:6px 0 14px}
+  h1{font-size:22px;margin:0}
+  .sub{color:var(--muted);font-size:14px}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 14px}
+  .span12{grid-column:span 12}
+  .span8{grid-column:span 8}
+  .span6{grid-column:span 6}
+  .span4{grid-column:span 4}
+  .kpi{display:flex;gap:18px;flex-wrap:wrap;margin:6px 0}
+  .pill{background:#0c111b;border:1px solid #1e2532;border-radius:999px;padding:6px 10px;color:var(--fg);font-size:14px}
+  .title{font-weight:600;margin:2px 0 8px}
+  .list{margin:0;padding:0;list-style:none}
+  .list li{padding:8px 0;border-top:1px solid #212836}
+  .list li:first-child{border-top:none}
+  small{color:var(--muted)}
+  .flex{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+  .flag{font-size:18px}
+  .tag{display:inline-block;padding:2px 8px;border:1px solid #273144;border-radius:999px;color:var(--muted);font-size:12px}
+  .cols{columns:2;column-gap:22px}
+  .r{text-align:right}
+  @media (max-width:980px){
+    .span8,.span6,.span4{grid-column:span 12}
+    .cols{columns:1}
+  }
+  .video{width:100%;border-radius:10px;border:1px solid #273144}
+  .muted{color:var(--muted)}
+  .head-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:6px 0;border-bottom:1px solid #212836;margin-bottom:6px;color:var(--muted)}
+  .row{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:8px 0;border-top:1px solid #212836}
+  .arrow{font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🌅 Morning Brief – Osielsko, Poland</h1>
+    <div class="sub" id="now"></div>
+  </header>
+
+  <div class="grid">
+    <!-- Weather + Sun/Moon -->
+    <section class="card span6" id="weather">
+      <div class="title">Weather • Osielsko</div>
+      <div class="kpi">
+        <div class="pill" id="wx-temp">🌡️ —</div>
+        <div class="pill" id="wx-wind">💨 —</div>
+        <div class="pill" id="wx-rain">🌧️ —</div>
+      </div>
+      <div class="flex">
+        <div class="pill" id="sunrise">🌅 Sunrise —</div>
+        <div class="pill" id="sunset">🌇 Sunset —</div>
+        <div class="pill" id="moon">🌙 Moon —</div>
+      </div>
+      <small id="wx-upd" class="muted"></small>
+    </section>
+
+    <!-- EUR clouds video -->
+    <section class="card span6">
+      <div class="title">☁️ Europe Satellite Clouds (latest)</div>
+      <video class="video" autoplay loop muted playsinline width="50%">
+        <source src="https://api.met.no/weatherapi/geosatellite/1.4/europe.mp4" type="video/mp4">
+      </video>
+      <small class="muted">Source: MET Norway (EUMETSAT composite)</small>
+    </section>
+
+    <!-- FX -->
+    <section class="card span6" id="fx">
+      <div class="title">💱 FX vs PLN (latest & trend)</div>
+      <div class="head-row mono"><div>Pair</div><div class="r">Rate</div><div class="r">Trend</div></div>
+      <div id="fx-rows"></div>
+      <small id="fx-upd" class="muted"></small>
+    </section>
+
+    <!-- Holidays -->
+    <section class="card span6" id="holi">
+      <div class="title">📅 Upcoming Public Holidays (next 30 days)</div>
+      <div class="cols" id="holi-list">Loading…</div>
+      <small class="muted">Source: Nager.Date API</small>
+    </section>
+
+    <!-- News -->
+    <section class="card span12" id="news">
+      <div class="title">📰 Onet.pl – Top 10 (latest)</div>
+      <ul class="list" id="news-list"><li>Loading…</li></ul>
+      <small class="muted">Source: Onet.pl RSS</small>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ---- Config ----
+  const LOC = { name:"Osielsko, PL", lat:53.196, lon:18.066, tz:"Europe/Warsaw" };
+  const COUNTRIES = [
+    ["🇵🇱","PL"],["🇩🇪","DE"],["🇦🇹","AT"],["🇨🇭","CH"],["🇨🇿","CZ"],
+    ["🇸🇰","SK"],["🇲🇦","MA"],["🇺🇸","US"],["🇮🇳","IN"],["🇨🇳","CN"]
+  ];
+  const rssOnet = "https://www.onet.pl/rss.html";
+  const rssProxy = u => "https://api.allorigins.win/raw?url="+encodeURIComponent(u);
+
+  // ---- Helpers ----
+  const $ = sel => document.querySelector(sel);
+  const fmt = (n, d=2) => Number(n).toLocaleString(undefined,{maximumFractionDigits:d});
+  const isoDate = (d) => d.toISOString().slice(0,10);
+  const rel = (dt) => new Intl.RelativeTimeFormat(undefined,{numeric:"auto"}).format(
+    Math.round((new Date(dt)-Date.now())/3.6e6), "hour"
+  );
+  const arrow = (v)=> v>0 ? "▲" : v<0 ? "▼" : "—";
+  const cls = (v)=> v>0 ? "ok" : v<0 ? "bad" : "warn";
+  const pad = n=> (n<10?"0":"")+n;
+
+  // Clock
+  const nowEl = $("#now");
+  function tick(){
+    const d = new Date();
+    nowEl.textContent = d.toLocaleString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric",hour:"2-digit",minute:"2-digit",timeZone:LOC.tz});
+  }
+  tick(); setInterval(tick, 30e3);
+
+  // ---- Weather (Open-Meteo) ----
+  (async function loadWeather(){
+    try{
+      const url = new URL("https://api.open-meteo.com/v1/forecast");
+      Object.assign(url.searchParams,{
+        latitude:LOC.lat, longitude:LOC.lon,
+        current:"temperature_2m,wind_speed_10m,precipitation",
+        daily:"sunrise,sunset,moon_phase",
+        timezone:LOC.tz
+      });
+      const r = await fetch(url, {cache:"no-store"});
+      const j = await r.json();
+      const c = j.current;
+      $("#wx-temp").textContent = `🌡️ ${fmt(c.temperature_2m,1)}°C`;
+      $("#wx-wind").textContent = `💨 ${fmt(c.wind_speed_10m,0)} km/h`;
+      $("#wx-rain").textContent = `🌧️ ${fmt(c.precipitation,1)} mm`;
+      $("#wx-upd").textContent = `Updated ${rel(j.current.time)} • Data: Open-Meteo`;
+
+      const d0 = 0; // today
+      const sr = j.daily.sunrise[d0].split("T")[1].slice(0,5);
+      const ss = j.daily.sunset[d0].split("T")[1].slice(0,5);
+      $("#sunrise").textContent = `🌅 Sunrise ${sr}`;
+      $("#sunset").textContent = `🌇 Sunset ${ss}`;
+
+      const mp = j.daily.moon_phase[d0]; // 0=new, 0.25=first q, 0.5=full, 0.75=last q
+      let mlabel="—";
+      if (mp===0) mlabel="New Moon";
+      else if (mp>0 && mp<0.25) mlabel="Waxing Crescent";
+      else if (mp===0.25) mlabel="First Quarter";
+      else if (mp>0.25 && mp<0.5) mlabel="Waxing Gibbous";
+      else if (mp===0.5) mlabel="Full Moon";
+      else if (mp>0.5 && mp<0.75) mlabel="Waning Gibbous";
+      else if (mp===0.75) mlabel="Last Quarter";
+      else if (mp>0.75 && mp<1) mlabel="Waning Crescent";
+      $("#moon").textContent = `🌙 ${mlabel}`;
+    }catch(e){
+      $("#weather").insertAdjacentHTML("beforeend", `<div class="muted">Weather unavailable.</div>`);
+      console.error(e);
+    }
+  })();
+
+  // ---- FX (Frankfurter) ----
+  (async function loadFX(){
+    async function pair(base, to){
+      const latest = await fetch(`https://api.frankfurter.app/latest?from=${base}&to=${to}`, {cache:"no-store"}).then(r=>r.json());
+      const d = new Date(latest.date);
+      // get previous business day
+      const prev = new Date(d); prev.setDate(prev.getDate()-1);
+      // loop back to find available date (max 7 days)
+      let hist=null, tries=0;
+      while(!hist && tries<7){
+        const ds = isoDate(prev);
+        const h = await fetch(`https://api.frankfurter.app/${ds}?from=${base}&to=${to}`).then(r=>r.ok?r.json():null);
+        if(h && h.rates && h.rates[to]) hist=h;
+        else { prev.setDate(prev.getDate()-1); tries++; }
+      }
+      const rate = latest.rates[to];
+      const old = hist ? hist.rates[to] : rate;
+      const diff = rate - old;
+      return {pair:`${base}/${to}`, rate, diff, date:latest.date};
+    }
+    try{
+      const [eur,usd,gbp] = await Promise.all([
+        pair("EUR","PLN"), pair("USD","PLN"), pair("GBP","PLN")
+      ]);
+      const rows = [eur,usd,gbp].map(x=>{
+        return `<div class="row mono">
+          <div>${x.pair}</div>
+          <div class="r">${fmt(x.rate,4)}</div>
+          <div class="r ${cls(x.diff)}"><span class="arrow">${arrow(x.diff)}</span> ${fmt(x.diff,4)}</div>
+        </div>`;
+      }).join("");
+      $("#fx-rows").innerHTML = rows;
+      $("#fx-upd").textContent = `Rates date ${eur.date} • Source: frankfurter.app (ECB)`;
+    }catch(e){
+      $("#fx").insertAdjacentHTML("beforeend", `<div class="muted">FX unavailable.</div>`); console.error(e);
+    }
+  })();
+
+  // ---- Holidays (Nager.Date) ----
+  (async function loadHolidays(){
+    try{
+      const now = new Date();
+      const in30 = new Date(); in30.setDate(in30.getDate()+30);
+      const y = now.getFullYear();
+      const blocks = await Promise.all(COUNTRIES.map(async([flag,cc])=>{
+        const url = `https://date.nager.at/api/v3/PublicHolidays/${y}/${cc}`;
+        const arr = await fetch(url).then(r=>r.json());
+        const pick = arr.filter(o=>{
+          const d = new Date(o.date+"T00:00:00");
+          return d>=now && d<=in30;
+        }).slice(0,3);
+        if(!pick.length) return `<div><div class="title"><span class="flag">${flag}</span> ${cc}</div><small class="muted">No holidays next 30 days.</small></div>`;
+        const lis = pick.map(o=>{
+          const d = new Date(o.date+"T00:00:00");
+          return `<div><span class="tag">${d.toLocaleDateString(undefined,{month:"short",day:"numeric"})}</span> ${o.localName||o.name}</div>`;
+        }).join("");
+        return `<div><div class="title"><span class="flag">${flag}</span> ${cc}</div>${lis}</div>`;
+      }));
+      $("#holi-list").innerHTML = blocks.join("");
+    }catch(e){
+      $("#holi-list").innerHTML = `<div class="muted">Holiday data unavailable.</div>`; console.error(e);
+    }
+  })();
+
+  // ---- News (Onet RSS via AllOrigins) ----
+  (async function loadNews(){
+    try{
+      const txt = await fetch(rssProxy(rssOnet), {cache:"no-store"}).then(r=>r.text());
+      const doc = new DOMParser().parseFromString(txt, "text/html");
+      // Onet RSS page lists many feeds; grab the first main feed link element(s)
+      // If direct RSS is preferred, change to a specific RSS URL.
+      // Fallback: try to parse any <item> if XML came through.
+      let items=[];
+      // Try XML parse first (if proxy delivered RSS)
+      const xml = new DOMParser().parseFromString(txt, "text/xml");
+      const xmlItems = [...xml.querySelectorAll("item")].slice(0,10);
+      if(xmlItems.length){
+        items = xmlItems.map(it=>({
+          title: it.querySelector("title")?.textContent?.trim(),
+          link: it.querySelector("link")?.textContent?.trim(),
+          date: it.querySelector("pubDate")?.textContent
+        }));
+      } else {
+        // Fallback: scrape anchors from onet RSS hub
+        items = [...doc.querySelectorAll("a[href*='.onet.pl/']")].slice(0,10).map(a=>({title:a.textContent.trim(),link:a.href}));
+      }
+      const lis = items.map(o=>{
+        const when = o.date ? new Date(o.date).toLocaleString() : "";
+        return `<li><a href="${o.link}" target="_blank" rel="noopener">${o.title||o.link}</a><br><small class="muted">${when}</small></li>`;
+      }).join("");
+      $("#news-list").innerHTML = lis || `<li class="muted">No items.</li>`;
+    }catch(e){
+      $("#news-list").innerHTML = `<li class="muted">News unavailable.</li>`; console.error(e);
+    }
+  })();
+
+})();
+</script>
+</body>
+</html>
